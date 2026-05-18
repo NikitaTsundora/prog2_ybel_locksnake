@@ -1,0 +1,28 @@
+plugins {
+    id 'java'
+    id("com.diffplug.spotless") version "8.4.0"
+    id 'application'
+}
+
+repositories{
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:6.0.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.0'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+application {
+}
+
+spotless {
+    java{googleJavaFormat()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+}

@@ -19,15 +19,11 @@ public class Main {
           try {
             var level = LevelLoader.loadLevelFromResource(LevelConstants.defaultLevel());
             var engine = new GameEngine(level);
-
             var panel = new GamePanel(engine.state(), new Java2DRenderer());
-
-            // State: Engine -> UI: GamePanel.update(GameState)
+            engine.addObserver(panel::onGameStateChanged);
             engine.setGamePanel(panel);
-
-            // Input/Direction: UI -> Engine: GameEngine.update(Direction)
             panel.setGameEngine(engine);
-
+            panel.addDirectionObserver(engine::update);
             var frame = new JFrame("LockSnake - Prog2");
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setLayout(new BorderLayout());
@@ -36,8 +32,6 @@ public class Main {
             frame.setLocationRelativeTo(null);
             frame.setResizable(false);
             frame.setVisible(true);
-
-            // Game loop: Timer -> Engine: GameEngine.tick()
             new Timer(
                     GameConstants.TICK_MS,
                     e -> {
@@ -45,7 +39,6 @@ public class Main {
                       handleGameEnd(e, engine.state(), frame);
                     })
                 .start();
-
           } catch (Exception e) {
             JOptionPane.showMessageDialog(
                 null,

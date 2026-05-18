@@ -1,65 +1,104 @@
 package de.hsbi.lockgame.ui;
 
+import de.hsbi.lockgame.logic.DirectionObserver;
 import de.hsbi.lockgame.logic.GameEngine;
 import de.hsbi.lockgame.logic.GameState;
+import de.hsbi.lockgame.logic.GameStateObserver;
 import de.hsbi.lockgame.model.Direction;
 import de.hsbi.lockgame.settings.GameConstants;
 import de.hsbi.lockgame.settings.InputConstants;
 import de.hsbi.lockgame.ui.render.GameRenderer;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.util.ArrayList;
+import java.util.List;
 import javax.swing.*;
 
-public class GamePanel extends JPanel {
+public class GamePanel extends JPanel implements GameStateObserver {
+
   private GameState state;
   private final GameRenderer renderer;
+
+  // Für alte Main:
   private GameEngine gameEngine;
+
+  // Für neues Observer-Pattern:
+  private final List<DirectionObserver> directionObservers = new ArrayList<>();
 
   public GamePanel(GameState initialState, GameRenderer renderer) {
     this.state = initialState;
     this.renderer = renderer;
 
-    var width = initialState.level().width() * GameConstants.TILE_SIZE;
-    var height = initialState.level().height() * GameConstants.TILE_SIZE;
+    int width = initialState.level().width() * GameConstants.TILE_SIZE;
+    int height = initialState.level().height() * GameConstants.TILE_SIZE;
 
     setPreferredSize(new Dimension(width, height));
     setBackground(Color.BLACK);
 
     setFocusable(true);
+
+    // Keybindings aus InputConstants
     InputConstants.BINDINGS.forEach(this::setupKeyBindings);
   }
 
+  // --- UI wird automatisch aktualisiert ---
+  @Override
+  public void onGameStateChanged(GameState state) {
+    this.state = state;
+    repaint();
+  }
+
+  // --- Für alte Main ---
   public void update(GameState newState) {
     this.state = newState;
     repaint();
   }
 
+  // --- Für alte Main ---
   public void setGameEngine(GameEngine engine) {
     this.gameEngine = engine;
   }
 
+  // --- Neues Observer-Pattern: Engine beobachtet UI ---
+  public void addDirectionObserver(DirectionObserver obs) {
+    directionObservers.add(obs);
+  }
+
+  private void notifyDirection(Direction d) {
+    for (DirectionObserver obs : directionObservers) {
+      obs.onDirectionChanged(d);
+    }
+  }
+
+  // --- KeyBindings ---
   private void setupKeyBindings(Direction direction, Iterable<Integer> keyCodes) {
-    // Swing separates two layers: multiple keystrokes can be mapped to a single Action
-    // 1. KeyStroke → Name
+
     var inputMap = getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
-    // 2. Name → Action
     var actionMap = getActionMap();
 
-    // shared name per direction
-    var actionKey = "move_" + direction.name();
+    String actionKey = "move_" + direction.name();
 
-    // shared Swing Action per direction
+    // Swing Action
     var swingAction =
         new AbstractAction() {
           @Override
           public void actionPerformed(ActionEvent e) {
-            gameEngine.update(direction);
+
+            // Neues Observer-Pattern:
+            notifyDirection(direction);
+
+            // Alte Main:
+            if (gameEngine != null) {
+              gameEngine.update(direction);
+            }
           }
         };
 
-    // 1. register KeyStroke → Name
-    keyCodes.forEach(keyCode -> inputMap.put(KeyStroke.getKeyStroke(keyCode, 0), actionKey));
-    // 2. register Name → Action
+    // KeyStroke → Action
+    for (int keyCode : keyCodes) {
+      inputMap.put(KeyStroke.getKeyStroke(keyCode, 0), actionKey);
+    }
+
     actionMap.put(actionKey, swingAction);
   }
 
